@@ -29,3 +29,4 @@ METHOD if_ex_inspectionlot_update~set_ud_at_save.
 
   ENDIF.
 ENDMETHOD.
+*a
