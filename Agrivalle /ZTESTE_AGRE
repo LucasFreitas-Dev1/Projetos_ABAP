@@ -1,6 +1,6 @@
 REPORT zteste_agre.
 
-
+*A
 PARAMETERS: p_werks TYPE werks_d.
 
 DATA: ti_agre TYPE TABLE OF ztabela_agre,
