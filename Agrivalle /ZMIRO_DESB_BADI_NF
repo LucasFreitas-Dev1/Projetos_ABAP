@@ -7,7 +7,7 @@ METHOD if_ex_invoice_update~change_at_save.
     ls_goodsmvt_code   TYPE bapi2017_gm_code,
     ls_return          TYPE bapiret2,
     ls_goodsmvt_item   LIKE LINE OF lt_goodsmvt_item,
-
+*
 * Variáveis do Loop e Acesso a Tabela
     ls_mseg            TYPE mseg,
     lv_mblnr           TYPE bapi2017_gm_head_ret-mat_doc,
