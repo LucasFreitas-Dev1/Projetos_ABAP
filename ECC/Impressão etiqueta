@@ -1,0 +1,63 @@
+SELECTION-SCREEN BEGIN OF BLOCK b01 WITH FRAME.
+PARAMETERS: I_REME  TYPE  LIPS-VBELN,
+            I_MATE  TYPE  MAKT-MAKTX,
+            I_CODE  TYPE  MARA-MATNR,
+            I_QUAN  TYPE  EKPO-MENGE,
+            I_PESO  TYPE  LIPS-BRGEW,
+            I_CONT  TYPE  EKPO-KONNR,
+            I_ITEM  TYPE  LIPS-POSNR,
+            I_QRCO  TYPE  LTAK-TANUM.
+SELECTION-SCREEN END OF BLOCK b01.
+
+
+
+DATA: lv_fm_name        TYPE rs38l_fnam,
+      ls_control_params TYPE ssfctrlop,
+      ls_output_options TYPE ssfcompop,
+      ls_job_output     TYPE ssfcrescl.
+
+START-OF-SELECTION.
+
+  CALL FUNCTION 'SSF_FUNCTION_MODULE_NAME'
+    EXPORTING
+      formname           = 'ZWM_ETQ_R_DEVOLUCAO'
+    IMPORTING
+      fm_name            = lv_fm_name
+    EXCEPTIONS
+      no_form            = 1
+      no_function_module = 2
+      OTHERS             = 3.
+
+  IF sy-subrc <> 0.
+    MESSAGE 'Erro ao localizar o SmartForm ZWM_ETQ_EXPEDICAO' TYPE 'E'.
+  ENDIF.
+
+
+  ls_control_params-no_dialog = 'X'.
+  ls_control_params-preview   = ' '.
+
+
+  ls_output_options-tddest   = 'LP01'.
+  ls_output_options-tdimmed  = 'X'.
+  ls_output_options-tdnewid  = 'X'.
+
+  CALL FUNCTION lv_fm_name
+    EXPORTING
+      control_parameters = ls_control_params
+      output_options     = ls_output_options
+      user_settings      = ' '
+      I_REME = I_REME
+      I_MATE = I_MATE
+      I_CODE = I_CODE
+      I_QUAN = I_QUAN
+      I_PESO = I_PESO
+      I_CONT = I_CONT
+      I_ITEM = I_ITEM
+      I_QRCO = I_QRCO.
+
+
+  IF sy-subrc <> 0.
+    MESSAGE 'Erro ao executar o SmartForm ZWM_ETQ_EXPEDICAO' TYPE 'E'.
+  ELSE.
+    MESSAGE 'SmartForm executado com sucesso' TYPE 'S'.
+  ENDIF.
