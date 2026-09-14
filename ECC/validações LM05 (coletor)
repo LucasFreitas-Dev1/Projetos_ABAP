@@ -1,0 +1,554 @@
+IF SY-TCODE = 'LM05' AND sy-dynnr = '2212'."
+
+  DATA:
+        v_zztipo               TYPE C,
+        v_verific              TYPE C,
+        v_vazio                TYPE c.
+
+  DATA: lv_centro_iq08   TYPE eqbs-b_werk,
+        lv_deposito_iq08 TYPE eqbs-b_lager.
+
+  DATA: gt_bipes_sessao TYPE TABLE OF zwm_nserie_log.
+
+  TYPES: BEGIN OF ty_log,
+         LGORT TYPE ZWM_NSERIE_LOG-LGORT,
+         END OF ty_log.
+
+  DATA: it_log2 TYPE TABLE OF ty_log,
+        wa_log2 TYPE ty_log.
+
+
+*      IF RLMOB-CLGPLA IS NOT INITIAL AND RLMOB-CLGPLA <> LTAP-VLPLA.
+*
+*        CLEAR RLMOB-CLGPLA.
+*        CURRENT_FIELD = 'RLMOB-CLGPLA'.
+*
+*        CALL FUNCTION 'CALL_MESSAGE_SCREEN'
+*              EXPORTING
+*                I_MSGID = 'ZMM'
+*                I_LANG  = sy-langu
+*                I_MSGNO = '000'
+*                I_MSGV1 = 'Esta bipagem esta divergente!'.
+*        EXIT.
+*
+*        ELSEIF RLMOB-CMATNR IS NOT INITIAL AND RLMOB-CMATNR <> LTAP-MATNR.
+*
+*         CLEAR RLMOB-CMATNR.
+*         CURRENT_FIELD = 'RLMOB-CMATNR'.
+*
+*          CALL FUNCTION 'CALL_MESSAGE_SCREEN'
+*          EXPORTING
+*            I_MSGID = 'ZMM'
+*            I_LANG  = sy-langu
+*            I_MSGNO = '000'
+*            I_MSGV1 = 'Esta bipagem esta divergente!'.
+*
+*            EXIT.
+*
+*        ELSEIF RLMOB-CQTY IS NOT INITIAL AND RLMOB-CQTY <> RLMOB-VSOLA.
+*
+*          CLEAR RLMOB-CQTY.
+*          CURRENT_FIELD = 'RLMOB-CQTY'.
+*
+*          CALL FUNCTION 'CALL_MESSAGE_SCREEN'
+*          EXPORTING
+*            I_MSGID = 'ZMM'
+*            I_LANG  = sy-langu
+*            I_MSGNO = '000'
+*            I_MSGV1 = 'Esta bipagem esta divergente!'.
+*          EXIT.
+*
+*
+*      ENDIF.
+
+
+    IF gv_conclusao_concluida IS INITIAL AND RLMOB-CQTY <> SPACE AND RLMOB-CMATNR <> SPACE AND RLMOB-CLGPLA <> SPACE.
+
+      DATA: V_ZNSERIE         TYPE  ZWM_NSERIE,
+            IT_TABELA_LOG     TYPE TABLE OF ZWM_NSERIE_LOG,
+            W_TABELA_LOG      TYPE ZWM_NSERIE_LOG,
+            V_LTAK            TYPE LTAK,
+            V_LTAP            TYPE LTAP,
+
+            V_MARA            TYPE MARA,
+            V_MARC            TYPE MARC,
+            V_MARD            TYPE MARD,
+            ZV_EQUI           TYPE V_EQUI,
+
+            P_ZZSERNR_BIP(18) TYPE C,
+
+            it_log            TYPE TABLE OF ZWM_NSERIE_LOG,
+            wa_log            TYPE ZWM_NSERIE_LOG,
+
+            v_log             TYPE ZWM_NSERIE_LOG-LGORT,
+
+            gv_tapos_anterior TYPE ltap-tapos,
+
+            v_cont            TYPE i,
+            v_sernr_aux(18)   TYPE c. "sernr.
+
+
+      "busca na ltap para os campos LGNUM( Nº do depósito), TANUM( nº ot), MATNR( material), WERKS (centro), LGORT (deposito)
+      SELECT SINGLE *
+      FROM LTAP
+      INTO V_LTAP
+*      WHERE  MATNR = ltap-MATNR
+      WHERE    tanum = INP_100
+      AND    LGNUM = ltap-lgnum
+      AND    TAPOS = ltap-tapos.
+
+        IF gv_tapos_anterior IS INITIAL OR gv_tapos_anterior <> v_ltap-tapos.
+        CLEAR: gt_bipes_sessao, it_log, gv_conclusao_concluida.
+        gv_tapos_anterior = v_ltap-tapos.
+      ENDIF.
+
+      SELECT  *
+      FROM ZWM_NSERIE_LOG
+      INTO TABLE it_log
+      WHERE TANUM = INP_100 " numero de OT vindo do parametro
+      AND MATNR = V_LTAP-MATNR
+      AND TAPOS = V_LTAP-TAPOS.
+
+    IF gt_bipes_sessao IS INITIAL AND it_log IS NOT INITIAL.
+        gt_bipes_sessao = it_log.
+      ENDIF.
+
+      v_cont = lines( gt_bipes_sessao ).
+
+      IF v_cont >= RLMOB-VSOLA.
+
+
+IF v_znserie-zztipo IS NOT INITIAL AND p_zzsernr_bip IS INITIAL.
+          " Deixa carregar a tela sem disparar erro
+        ELSE.
+        gv_conclusao_concluida = 'x'.
+
+        CALL FUNCTION 'CALL_MESSAGE_SCREEN'
+          EXPORTING
+            I_MSGID = 'ZMM'
+            I_LANG  = sy-langu
+            I_MSGNO = '000'
+            I_MSGV1 = 'Esta OT já foi totalmente conferida!'.
+
+        CLEAR P_ZZSERNR_BIP.
+        CURRENT_FIELD = 'P_ZZSERNR_BIP'.
+        gv_conclusao_concluida = 'X'.
+        EXIT.
+      ENDIF.
+
+endif.
+
+      "busca na mara para os campos MTART (Tipo material)
+      SELECT SINGLE *
+      FROM MARA
+      INTO V_MARA
+      WHERE MATNR = LTAP-MATNR.
+
+      "busca na ltak para os campos VBELN (remessa) , TRART (Tipo transporte) E REFNR (grupo)
+      SELECT SINGLE *
+      FROM LTAK
+      INTO V_LTAK
+      WHERE lgnum = ltap-lgnum
+      AND   tanum = INP_100.
+
+
+      "busca na marc para pegar o campo SERNP (PerfilNºs série)
+      SELECT SINGLE *
+      FROM MARC
+      INTO V_MARC
+      WHERE MATNR = LTAP-MATNR
+      AND   WERKS = V_LTAP-WERKS.
+
+      SELECT SINGLE *
+      FROM MARD
+      INTO V_MARD
+      WHERE MATNR = LTAP-MATNR
+      AND   WERKS = V_LTAP-WERKS.
+
+      SELECT SINGLE *
+      FROM ZWM_NSERIE
+      INTO V_ZNSERIE
+      WHERE MTART = V_MARA-MTART
+      AND   WERKS = V_LTAP-WERKS
+      AND   LGNUM = V_LTAP-LGNUM
+      AND   SERNP = V_MARC-SERNP.
+
+*        IF v_znserie-zztipo IS NOT INITIAL AND p_zzsernr_bip IS INITIAL.
+*          " Deixa carregar a tela sem disparar erro
+*        ELSE.
+*        gv_conclusao_concluida = 'x'.
+*
+*        CALL FUNCTION 'CALL_MESSAGE_SCREEN'
+*          EXPORTING
+*            I_MSGID = 'ZMM'
+*            I_LANG  = sy-langu
+*            I_MSGNO = '000'
+*            I_MSGV1 = 'Esta OT já foi totalmente conferida!'.
+*
+*        CLEAR P_ZZSERNR_BIP.
+*        CURRENT_FIELD = 'P_ZZSERNR_BIP'.
+*        gv_conclusao_concluida = 'X'.
+*        EXIT.
+*      ENDIF.
+
+*      ENDIF.
+
+      SHIFT ltap-MATNR LEFT DELETING LEADING '0'.
+
+      IF ok_code = 'SAVE'.
+  CURRENT_FIELD = 'P_ZZSERNR_BIP'.
+ENDIF.
+
+IF ok_code = 'NEXT'.
+  IF RLMOB-CQTY <> SPACE.
+    DO 1 TIMES.
+      IF V_ZNSERIE-SERNP = space AND P_ZZSERNR_BIP IS INITIAL..
+
+        SELECT COUNT(*)
+        FROM ZTMM_MEDIDOR
+        WHERE MATNR = LTAP-MATNR.
+
+        IF SY-SUBRC = 0 .
+
+          CALL FUNCTION 'CALL_MESSAGE_SCREEN'
+            EXPORTING
+              I_MSGID = 'ZMM'
+              I_LANG  = sy-langu
+              I_MSGNO = '000'
+              I_MSGV1 = 'Esta faltando parametro de NºPerfil'.
+
+          CURRENT_FIELD = 'P_ZZSERNR_BIP'.
+        ENDIF.
+
+      ENDIF.
+    ENDDO.
+  ENDIF.
+ENDIF.
+
+
+IF RLMOB-CQTY <> SPACE AND RLMOB-CMATNR <> SPACE AND RLMOB-CLGPLA <> SPACE AND CURRENT_FIELD <> 'P_ZZSERNR_BIP'.
+  CURRENT_FIELD = 'P_ZZSERNR_BIP'.
+  EXIT.
+ENDIF.
+
+IF RLMOB-CQTY <> SPACE AND RLMOB-CMATNR <> SPACE AND RLMOB-CLGPLA <> SPACE  AND CURRENT_FIELD = 'P_ZZSERNR_BIP'. "AND OK_CODE = 'NEXT'
+  ok_code = 'SAVE'.
+
+     IF V_ZNSERIE-ZZTIPO IS INITIAL OR ( V_ZNSERIE-ZZTIPO = 'OP' AND P_ZZSERNR_BIP IS INITIAL ).
+
+        v_zztipo = 'X'.
+
+        CLEAR it_tabela_log.
+
+        MOVE-CORRESPONDING V_LTAP to W_TABELA_LOG.
+        MOVE-CORRESPONDING V_LTAK to W_TABELA_LOG.
+        W_TABELA_LOG-SERNP = V_MARC-SERNP.
+        W_TABELA_LOG-ZZSERNR_BIP = p_zzsernr_bip.
+        W_TABELA_LOG-ZZVALIDA_NS = ' '.
+
+        APPEND w_tabela_log TO it_tabela_log.
+
+        CALL FUNCTION 'ZWM_SALVAR_LOG_CONFERENCIA' IN UPDATE TASK
+          EXPORTING
+            it_tabela_log = it_tabela_log.
+
+        CLEAR it_tabela_log.
+
+        CLEAR p_zzsernr_bip.
+
+      ENDIF.
+
+
+       IF RLMOB-CLGPLA IS NOT INITIAL AND
+          RLMOB-CMATNR IS NOT INITIAL AND
+          RLMOB-CQTY   IS NOT INITIAL.
+
+   "validar se for Obrigatório.
+
+      IF V_ZNSERIE-ZZTIPO = 'OB'.
+
+        IF P_ZZSERNR_BIP IS INITIAL.
+
+          CALL FUNCTION 'CALL_MESSAGE_SCREEN'
+            EXPORTING
+              I_MSGID = 'ZMM'
+              I_LANG  = sy-langu
+              I_MSGNO = '000'
+              I_MSGV1 = 'Campo Num.série obrigatório'.
+          CLEAR P_ZZSERNR_BIP.
+          CURRENT_FIELD = 'P_ZZSERNR_BIP'.
+          EXIT.
+        ENDIF.
+
+        v_cont = lines( gt_bipes_sessao ).
+
+        IF V_ZNSERIE-ZZTIPO = 'OB' AND v_cont >= RLMOB-VSOLA.
+
+          CALL FUNCTION 'CALL_MESSAGE_SCREEN'
+            EXPORTING
+              I_MSGID = 'ZMM'
+              I_LANG  = sy-langu
+              I_MSGNO = '000'
+              I_MSGV1 = 'Quantidade maxima de materiais ja atingidos.'.
+          CLEAR P_ZZSERNR_BIP.
+          CURRENT_FIELD = 'P_ZZSERNR_BIP'.
+          gv_conclusao_concluida = 'X'.
+          EXIT.
+        ENDIF.
+
+      ENDIF.
+
+
+v_sernr_aux = P_ZZSERNR_BIP.
+
+IF P_ZZSERNR_BIP IS NOT INITIAL.
+
+ READ TABLE gt_bipes_sessao TRANSPORTING NO FIELDS
+    WITH KEY zzsernr_bip = v_sernr_aux
+    tanum       = inp_100.
+
+  IF sy-subrc = 0.
+    CALL FUNCTION 'CALL_MESSAGE_SCREEN'
+      EXPORTING
+        i_msgid = 'ZMM'
+        i_lang  = sy-langu
+        i_msgno = '000'
+        i_msgv1 = 'Série duplicada!'
+        i_msgv2 = 'Numero de série ja confirmada para está OT!.'.
+    CLEAR p_zzsernr_bip.
+    current_field = 'P_ZZSERNR_BIP'.
+    EXIT.
+  ENDIF.
+
+ENDIF.
+      "zero a esquerda
+      CALL FUNCTION 'CONVERSION_EXIT_GERNR_INPUT'
+        EXPORTING
+          INPUT  = P_ZZSERNR_BIP
+        IMPORTING
+          OUTPUT = P_ZZSERNR_BIP.
+
+*      CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+*  EXPORTING
+*    input  = v_sernr_aux
+*  IMPORTING
+*    output = v_sernr_aux.
+*
+*     CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+*        EXPORTING
+*          input  = v_ltap-matnr
+*        IMPORTING
+*          output = v_ltap-matnr.
+
+
+CLEAR: v_verific,
+       v_vazio.
+
+   IF V_ZNSERIE-ZZTIPO = 'OP'.
+
+IF p_zzsernr_bip IS NOT INITIAL.
+
+    SELECT SINGLE matnr, status, nr_serie
+      FROM ztmm_medidor
+      INTO @DATA(v_ztmm)
+      WHERE matnr    = @v_ltap-matnr
+        AND nr_serie = @v_sernr_aux
+        AND status   = 'C1'.
+
+
+    IF sy-subrc <> 0.
+      CALL FUNCTION 'CALL_MESSAGE_SCREEN'
+        EXPORTING
+          i_msgid = 'ZMM'
+          i_lang  = sy-langu
+          i_msgno = '000'
+          i_msgv1 = 'Número de série inválida ou inexistente!'.
+
+      CLEAR p_zzsernr_bip.
+      current_field = 'P_ZZSERNR_BIP'.
+      EXIT.
+    ENDIF.
+
+  ELSE.
+
+    SELECT SINGLE matnr, status, nr_serie
+      FROM ztmm_medidor
+      INTO @v_ztmm
+      WHERE matnr    = @v_ltap-matnr
+        AND status   = 'C1'.
+
+    IF sy-subrc = 0.
+      CALL FUNCTION 'CALL_MESSAGE_SCREEN'
+        EXPORTING
+          i_msgid = 'ZMM'
+          i_lang  = sy-langu
+          i_msgno = '000'
+          i_msgv1 = 'Material contém número de série!'.
+
+      CLEAR p_zzsernr_bip.
+      current_field = 'P_ZZSERNR_BIP'.
+      EXIT.
+    ENDIF.
+
+  ENDIF.
+
+ENDIF.
+
+      ENDIF.
+
+
+IF P_ZZSERNR_BIP IS NOT INITIAL AND V_ZNSERIE-ZZTIPO = 'OB'.
+
+        SELECT SINGLE *
+        FROM V_EQUI
+        INTO ZV_EQUI
+        WHERE SERNR = P_ZZSERNR_BIP
+        AND MATNR = v_ltap-matnr.
+
+        IF SY-SUBRC <> 0 ."AND v_vazio IS INITIAL AND v_verific IS NOT INITIAL.
+
+          CALL FUNCTION 'CALL_MESSAGE_SCREEN'
+            EXPORTING
+              I_MSGID = 'ZMM'
+              I_LANG  = sy-langu
+              I_MSGNO = '000'
+              I_MSGV1 = 'Número de série inexistente para esse material'.
+          CLEAR P_ZZSERNR_BIP.
+          CURRENT_FIELD = 'P_ZZSERNR_BIP'.
+          EXIT.
+        ENDIF.
+endif.
+
+      IF P_ZZSERNR_BIP IS NOT INITIAL.
+
+        SELECT LGORT
+        FROM ZWM_NSERIE_LOG
+        INTO TABLE it_log2
+        WHERE ZZSERNR_BIP = v_sernr_aux
+        AND TANUM = INP_100.
+
+
+
+        IF SY-SUBRC = 0.
+
+          CALL FUNCTION 'CALL_MESSAGE_SCREEN'
+            EXPORTING
+              I_MSGID = 'ZMM'
+              I_LANG  = sy-langu
+              I_MSGNO = '000'
+              i_msgv1 = 'Número de série já utilizado'
+              i_msgv2 = ' em outra conferencia.'.
+          CLEAR P_ZZSERNR_BIP.
+          CURRENT_FIELD = 'P_ZZSERNR_BIP'.
+          EXIT.
+
+          ELSE.
+
+          LOOP AT it_log2 INTO wa_log2.
+
+          IF wa_log2 <> 'D101'
+          AND wa_log2 <> 'D201'
+          AND wa_log2 <> 'D301'
+          AND wa_log2 <> 'D401'
+          AND wa_log2 <> 'D501'.
+
+          ELSE.
+            CALL FUNCTION 'CALL_MESSAGE_SCREEN'
+            EXPORTING
+              I_MSGID = 'ZMM'
+              I_LANG  = sy-langu
+              I_MSGNO = '000'
+              i_msgv1 = 'Número de série já utilizado'
+              i_msgv2 = ' em outra conferencia.'.
+          CLEAR P_ZZSERNR_BIP.
+          CURRENT_FIELD = 'P_ZZSERNR_BIP'.
+          EXIT.
+
+
+        ENDIF.
+        ENDLOOP.
+        ENDIF.
+
+
+        READ TABLE it_tabela_log TRANSPORTING NO FIELDS
+        WITH KEY zzsernr_bip = v_sernr_aux.
+
+        IF sy-subrc = 0.
+          CALL FUNCTION 'CALL_MESSAGE_SCREEN'
+            EXPORTING
+              i_msgid = 'ZMM'
+              i_lang  = sy-langu
+              i_msgno = '000'
+              i_msgv1 = 'Série duplicada! Você já bipou'
+              i_msgv2 = ' este item nesta conferência.'.
+          CLEAR p_zzsernr_bip.
+          CURRENT_FIELD = 'P_ZZSERNR_BIP'.
+          EXIT.
+        ENDIF.
+
+      ENDIF.
+
+
+      IF P_ZZSERNR_BIP IS INITIAL.
+        CLEAR gt_bipes_sessao.
+      ENDIF.
+
+      CLEAR w_tabela_log.
+      MOVE-CORRESPONDING V_LTAP TO W_TABELA_LOG.
+      MOVE-CORRESPONDING V_LTAK TO W_TABELA_LOG.
+      W_TABELA_LOG-SERNP = V_MARC-SERNP.
+
+      IF P_ZZSERNR_BIP IS INITIAL.
+        W_TABELA_LOG-ZZSERNR_BIP = space.
+        W_TABELA_LOG-ZZVALIDA_NS = ' '.
+      ELSE.
+        W_TABELA_LOG-ZZSERNR_BIP = v_sernr_aux.
+        W_TABELA_LOG-ZZVALIDA_NS = 'X'.
+      ENDIF.
+
+      APPEND w_tabela_log TO gt_bipes_sessao.
+
+
+      IF P_ZZSERNR_BIP IS INITIAL.
+        v_cont = rlmob-vsola.
+      ELSE.
+        v_cont = lines( gt_bipes_sessao ).
+      ENDIF.
+
+        IF v_cont >= rlmob-vsola.
+
+
+          CALL FUNCTION 'ZWM_SALVAR_LOG_CONFERENCIA' "IN UPDATE TASK
+            EXPORTING
+              IT_TABELA_LOG = gt_bipes_sessao.
+
+          CLEAR: gt_bipes_sessao, p_zzsernr_bip.
+          gv_conclusao_concluida = 'X'.
+
+
+          CALL FUNCTION 'CALL_MESSAGE_SCREEN'
+            EXPORTING
+              I_MSGID = 'ZMM'
+              I_LANG  = sy-langu
+              I_MSGNO = '000'
+              I_MSGV1 = 'Sucesso! Tudo conferido e salvo.'.
+          CLEAR p_zzsernr_bip.
+          CURRENT_FIELD = 'P_ZZSERNR_BIP'.
+          EXIT.
+
+          ELSE.
+         CALL FUNCTION 'CALL_MESSAGE_SCREEN'
+             EXPORTING
+               i_msgid = 'ZMM'
+               i_lang  = sy-langu
+               i_msgno = '000'
+               i_msgv1 = 'Série OK! Bipe a próxima.'.
+           CLEAR p_zzsernr_bip.
+           current_field = 'P_ZZSERNR_BIP'.
+           EXIT.
+          ENDIF.
+
+
+      ENDIF.
+    ENDIF.
+ENDIF.
