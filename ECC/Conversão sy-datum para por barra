@@ -1,0 +1,8 @@
+CALL FUNCTION 'CONVERT_DATE_TO_EXTERNAL'
+  EXPORTING
+    date_internal            = sy-datum
+  IMPORTING
+    date_external            = lv_data_externa
+  EXCEPTIONS
+    date_internal_is_invalid = 1
+    OTHERS                   = 2.
