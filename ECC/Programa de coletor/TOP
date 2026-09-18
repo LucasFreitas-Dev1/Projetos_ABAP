@@ -1,0 +1,94 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZWM_PRG_CONFERENCIA_TOP.
+*&---------------------------------------------------------------------*
+
+TABLES: ZWM_VERIFIC,
+        ZWM_VOLUM.
+
+
+  DATA: lv_divergencias TYPE TABLE OF lips,
+        wa_divergencias TYPE lips,
+        lv_erro         TYPE  CHAR1.
+
+"tela 1 e 2
+Data: ok_code           TYPE sy-ucomm,
+      cp_remessa        TYPE lips-vbeln,
+      cp_qtd            TYPE ZWM_VERIFIC-LFIMG,
+      c_texto(50),
+      C_REC_REMESSA(30),
+      CP_REMESSA3(30),
+      CP_ITENS(30),
+      CP_DESCRI(50),
+      cp_item           TYPE string,
+      cp_item_2         TYPE string,
+      cp_mat            TYPE lips-matnr,
+      cp_vol            TYPE int4,
+      it_lips           TYPE TABLE OF lips,
+      wa_lips           TYPE lips,
+      v_cont            TYPE i,
+      V_CONT_VOLUM      TYPE zwm_volum-cont,
+      v_total           TYPE i,
+      v_ARKTX           TYPE lips-ARKTX,
+      v_campos_ativos   TYPE c LENGTH 1 VALUE ' '.
+
+    DATA: it_aux_item LIKE it_lips,
+        wa_aux_item LIKE LINE OF it_lips.
+
+"TABELA INTERNA PARA OS VOLUMES
+TYPES: BEGIN OF ty_volum,
+         VBELN TYPE ZWM_VOLUM-VBELN,
+         POSNR TYPE ZWM_VOLUM-POSNR,
+         CONT  TYPE ZWM_VOLUM-CONT,
+         LFIMG TYPE ZWM_VOLUM-LFIMG,
+         VOLUM TYPE ZWM_VOLUM-VOLUM,
+       END OF ty_volum.
+
+DATA: it_volum      TYPE STANDARD TABLE OF ty_volum,
+      wa_volum      TYPE ty_volum,
+      v_total_volum TYPE char20.
+
+"tela 3
+
+TYPES: BEGIN OF ty_conf,
+         VBELN TYPE ZWM_VERIFIC-VBELN,
+         POSNR TYPE ZWM_VERIFIC-POSNR,
+         MATNR TYPE ZWM_VERIFIC-MATNR,
+         ARKTX TYPE ZWM_VERIFIC-ARKTX,
+         LFIMG TYPE ZWM_VERIFIC-LFIMG,
+       END OF ty_conf.
+
+DATA: vg_matnr_0004_1         type lips-matnr,
+      vg_matnr_0004_2         type lips-matnr,
+      vg_matnr_0004_3         type lips-matnr,
+      vg_matnr_0004_4         type lips-matnr,
+      vg_matnr_0004_5         type lips-matnr,
+      vg_matnr_0004_6         type lips-matnr,
+      vg_arktx_0004_1         type lips-arktx,
+      vg_arktx_0004_2         type lips-arktx,
+      vg_arktx_0004_3         type lips-arktx,
+      vg_arktx_0004_4         type lips-arktx,
+      vg_arktx_0004_5         type lips-arktx,
+      vg_arktx_0004_6         type lips-arktx,
+      vg_item_0004_1          type zwm_verific-posnr,
+      vg_item_0004_2          type zwm_verific-posnr,
+      vg_item_0004_3          type zwm_verific-posnr,
+      vg_item_0004_4          type zwm_verific-posnr,
+      vg_item_0004_5          type zwm_verific-posnr,
+      vg_item_0004_6          type zwm_verific-posnr,
+      vg_qtde_0004_1          TYPE char20, "ZWM_VERIFIC-LFIMG,
+      vg_qtde_0004_2          TYPE char20, "ZWM_VERIFIC-LFIMG,
+      vg_qtde_0004_3          TYPE char20, "ZWM_VERIFIC-LFIMG,
+      vg_qtde_0004_4          TYPE char20, "ZWM_VERIFIC-LFIMG,
+      vg_qtde_0004_5          TYPE char20, "ZWM_VERIFIC-LFIMG,
+      vg_qtde_0004_6          TYPE char20, "ZWM_VERIFIC-LFIMG,
+      vg_index_0004           type sy-tabix,
+      vg_lines_0004           type sy-tabix,
+      vg_contador_0004        type sy-tabix,
+      vg_numeros_paginas_0004 type i,
+      ty_conferidos           type standard table of ty_conf,
+      wa_conferidos           type ty_conf.
+
+
+"TELA 5
+
+DATA: TXT_RECONTAGEM(30).
