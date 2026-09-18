@@ -1,0 +1,109 @@
+
+MODULE USER_COMMAND_0001 INPUT.
+
+  case ok_code.
+
+    WHEN 'BTN_VOLTAR'.
+      CLEAR ok_code.
+      LEAVE PROGRAM.
+
+    WHEN 'BTN_LIMPAR'.
+      CLEAR ok_code.
+      CLEAR c_texto.
+      Clear CP_REMESSA.
+
+
+    WHEN 'BTN_EXEC'.
+      CLEAR ok_code.
+      CLEAR: CP_ITEM.
+      PERFORM ZEXEC_CONF.
+  ENDCASE.
+
+
+
+ENDMODULE.
+
+MODULE USER_COMMAND_0002 INPUT.
+
+  CASE ok_code.
+
+    WHEN 'BTN_VT'.
+      CLEAR ok_code.
+      CLEAR c_texto.
+      CALL SCREEN 0001.
+
+    WHEN 'BTN_LIMPAR_2'.
+      CLEAR ok_code.
+      CLEAR CP_QTD.
+
+    WHEN 'BTN_CONFERIDOS'.
+      CLEAR ok_code.
+      CALL SCREEN 0003.
+
+    WHEN 'BTN_CONFERIR'.
+      CLEAR ok_code.
+      CLEAR ZWM_VERIFIC.
+      PERFORM Z_CONFERIR.
+
+    WHEN 'BTN_ADC'.
+      CLEAR ok_code.
+      v_campos_ativos = 'X'.
+
+    WHEN 'BTN_OK_VOLUM'.
+        CLEAR ok_code.
+        PERFORM zbtn_ok_volum.
+        CLEAR: cp_vol, cp_qtd.
+
+  ENDCASE.
+ENDMODULE.
+
+
+MODULE USER_COMMAND_0003 INPUT.
+
+  CASE ok_code.
+
+    WHEN 'BT_VT_3'.
+      CLEAR ok_code.
+      CALL SCREEN 0002.
+
+    WHEN 'BTN_ANTERIOR_3'.
+      CLEAR ok_code.
+      PERFORM ZBTN_ANTERIOR.
+
+
+    WHEN 'BTN_PROXIMO_3'.
+      v_cont = v_cont + 1.
+      CLEAR ok_code.
+      PERFORM ZBTN_PROXIMO.
+
+
+  ENDCASE.
+ENDMODULE.
+
+
+MODULE USER_COMMAND_0004 INPUT.
+
+  CASE ok_code.
+
+    WHEN 'BTN_OK_2'.
+      CLEAR ok_code.
+      SET SCREEN 0001.
+      LEAVE SCREEN.
+
+  ENDCASE.
+
+ENDMODULE.
+
+MODULE USER_COMMAND_0005 INPUT.
+
+  CASE ok_code.
+    WHEN 'BTN_RECONTAGEM'.
+      PERFORM ZBTN_RECONTAGEM.
+
+
+    WHEN 'BTN_CONFIRMAR'.
+      CLEAR ok_code.
+      CALL SCREEN 0001.
+  ENDCASE.
+
+ENDMODULE.
