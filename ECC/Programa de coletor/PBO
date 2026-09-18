@@ -1,0 +1,217 @@
+
+MODULE STATUS_0001 OUTPUT.
+*  SET PF-STATUS 'xxxxxxxx'.
+*  SET TITLEBAR 'xxx'.
+ENDMODULE.
+
+
+MODULE STATUS_0002 OUTPUT.
+
+"logica para vir com os campos inativos.
+  LOOP AT SCREEN.
+
+    IF screen-name = 'CP_QTD' OR screen-name = 'CP_VOL'.
+      IF v_campos_ativos = 'X'.
+        screen-input = 1.
+      ELSE.
+        screen-input = 0.
+      ENDIF.
+      MODIFY SCREEN.
+    ENDIF.
+  ENDLOOP.
+
+
+ENDMODULE.
+
+
+MODULE STATUS_0003 OUTPUT.
+
+
+  SELECT vbeln posnr matnr arktx lfimg
+    FROM zwm_verific
+    INTO TABLE ty_conferidos
+   WHERE vbeln = cp_remessa.
+
+    " tabela nterna auxiliar para tirar material duplicado e somar valor
+*  DATA: it_aux LIKE ty_conferidos,
+*        wa_aux LIKE LINE OF ty_conferidos.
+*
+*  CLEAR it_aux.
+*
+*  LOOP AT ty_conferidos INTO wa_conferidos.
+*
+*    READ TABLE it_aux INTO wa_aux WITH KEY matnr = wa_conferidos-matnr.
+*
+*    IF sy-subrc = 0.
+*
+*      wa_aux-lfimg = wa_aux-lfimg + wa_conferidos-lfimg.
+*      MODIFY it_aux FROM wa_aux INDEX sy-tabix.
+*    ELSE.
+*
+*      APPEND wa_conferidos TO it_aux.
+*    ENDIF.
+*
+*  ENDLOOP.
+
+*  ty_conferidos = it_aux.
+
+  SORT ty_conferidos BY Posnr.
+
+  " vg_index_0004 controla a página
+  IF vg_index_0004 IS INITIAL.
+    vg_index_0004 = 1.
+  ENDIF.
+
+  " Calcula o ponto de partida na tabela interna
+  DATA(lv_start) = ( ( vg_index_0004 - 1 ) * 6 ) + 1.
+  CLEAR: vg_contador_0004.
+
+  PERFORM zf_clear_campos_tela_0003.
+
+
+
+  LOOP AT ty_conferidos INTO wa_conferidos FROM lv_start.
+    vg_contador_0004 = vg_contador_0004 + 1.
+
+
+    CASE vg_contador_0004.
+      WHEN 1.
+        vg_item_0004_1  = wa_conferidos-posnr.
+        vg_qtde_0004_1  = wa_conferidos-lfimg.
+        vg_matnr_0004_1 = wa_conferidos-matnr.
+        vg_arktx_0004_1 = wa_conferidos-arktx.
+        WRITE wa_conferidos-lfimg TO vg_qtde_0004_1 DECIMALS 0.
+        CONDENSE vg_qtde_0004_1 NO-GAPS.
+      WHEN 2.
+        vg_item_0004_2  = wa_conferidos-posnr.
+        vg_qtde_0004_2  = wa_conferidos-lfimg.
+        vg_matnr_0004_2 = wa_conferidos-matnr.
+        vg_arktx_0004_2 = wa_conferidos-arktx.
+        WRITE wa_conferidos-lfimg TO vg_qtde_0004_2 DECIMALS 0.
+        CONDENSE vg_qtde_0004_2 NO-GAPS.
+      WHEN 3.
+        vg_item_0004_3 = wa_conferidos-posnr.
+        vg_qtde_0004_3 = wa_conferidos-lfimg.
+        vg_matnr_0004_3 = wa_conferidos-matnr.
+        vg_arktx_0004_3 = wa_conferidos-arktx.
+        WRITE wa_conferidos-lfimg TO vg_qtde_0004_3 DECIMALS 0.
+        CONDENSE vg_qtde_0004_3 NO-GAPS.
+      WHEN 4.
+        vg_item_0004_4 = wa_conferidos-posnr.
+        vg_qtde_0004_4 = wa_conferidos-lfimg.
+        vg_matnr_0004_4 = wa_conferidos-matnr.
+        vg_arktx_0004_4 = wa_conferidos-arktx.
+        WRITE wa_conferidos-lfimg TO vg_qtde_0004_4 DECIMALS 0.
+        CONDENSE vg_qtde_0004_4 NO-GAPS.
+      WHEN 5.
+        vg_item_0004_5 = wa_conferidos-posnr.
+        vg_qtde_0004_5 = wa_conferidos-lfimg.
+        vg_matnr_0004_5 = wa_conferidos-matnr.
+        vg_arktx_0004_5 = wa_conferidos-arktx.
+        WRITE wa_conferidos-lfimg TO vg_qtde_0004_5 DECIMALS 0.
+        CONDENSE vg_qtde_0004_5 NO-GAPS.
+      WHEN 6.
+        vg_item_0004_6 = wa_conferidos-posnr.
+        vg_qtde_0004_6 = wa_conferidos-lfimg.
+        vg_matnr_0004_6 = wa_conferidos-matnr.
+        vg_arktx_0004_6 = wa_conferidos-arktx.
+        WRITE wa_conferidos-lfimg TO vg_qtde_0004_6 DECIMALS 0.
+        CONDENSE vg_qtde_0004_6 NO-GAPS.
+    ENDCASE.
+
+
+"removendo zeros a esquerda e a direita dos campos
+
+    SHIFT vg_qtde_0004_1 RIGHT DELETING TRAILING '0'.
+    SHIFT vg_qtde_0004_2 RIGHT DELETING TRAILING '0'.
+    SHIFT vg_qtde_0004_3 RIGHT DELETING TRAILING '0'.
+    SHIFT vg_qtde_0004_4 RIGHT DELETING TRAILING '0'.
+    SHIFT vg_qtde_0004_5 RIGHT DELETING TRAILING '0'.
+    SHIFT vg_qtde_0004_6 RIGHT DELETING TRAILING '0'.
+
+    SHIFT VG_MATNR_0004_1 LEFT DELETING LEADING '0'.
+    SHIFT VG_MATNR_0004_2 LEFT DELETING LEADING '0'.
+    SHIFT VG_MATNR_0004_3 LEFT DELETING LEADING '0'.
+    SHIFT VG_MATNR_0004_4 LEFT DELETING LEADING '0'.
+    SHIFT VG_MATNR_0004_5 LEFT DELETING LEADING '0'.
+    SHIFT VG_MATNR_0004_6 LEFT DELETING LEADING '0'.
+
+  ENDLOOP.
+
+"remover 0 quando os campos estiverem vazios
+  LOOP AT SCREEN.
+
+    IF screen-name = 'VG_ITEM_0004_1' OR screen-name = 'VG_QTDE_0004_1'.
+      IF vg_item_0004_1 IS INITIAL OR vg_item_0004_1 = 0 OR vg_item_0004_1 = '000000'.
+        screen-active    = '0'.
+        screen-invisible = '1'.
+      ELSE.
+        screen-active    = '1'.
+        screen-invisible = '0'.
+      ENDIF.
+      MODIFY SCREEN.
+    ENDIF.
+
+
+    IF screen-name = 'VG_ITEM_0004_2' OR screen-name = 'VG_QTDE_0004_2'.
+      IF vg_item_0004_2 IS INITIAL OR vg_item_0004_2 = 0 OR vg_item_0004_2 = '000000'.
+        screen-active    = '0'.
+        screen-invisible = '1'.
+      ELSE.
+        screen-active    = '1'.
+        screen-invisible = '0'.
+      ENDIF.
+      MODIFY SCREEN.
+    ENDIF.
+
+
+    IF screen-name = 'VG_ITEM_0004_3' OR screen-name = 'VG_QTDE_0004_3'.
+      IF vg_item_0004_3 IS INITIAL OR vg_item_0004_3 = 0 OR vg_item_0004_3 = '000000'.
+        screen-active    = '0'.
+        screen-invisible = '1'.
+      ELSE.
+        screen-active    = '1'.
+        screen-invisible = '0'.
+      ENDIF.
+      MODIFY SCREEN.
+    ENDIF.
+
+
+    IF screen-name = 'VG_ITEM_0004_4' OR screen-name = 'VG_QTDE_0004_4'.
+      IF vg_item_0004_4 IS INITIAL OR vg_item_0004_4 = 0 OR vg_item_0004_4 = '000000'.
+        screen-active    = '0'.
+        screen-invisible = '1'.
+      ELSE.
+        screen-active    = '1'.
+        screen-invisible = '0'.
+      ENDIF.
+      MODIFY SCREEN.
+    ENDIF.
+
+
+    IF screen-name = 'VG_ITEM_0004_5' OR screen-name = 'VG_QTDE_0004_5'.
+      IF vg_item_0004_5 IS INITIAL OR vg_item_0004_5 = 0 OR vg_item_0004_5 = '000000'.
+        screen-active    = '0'.
+        screen-invisible = '1'.
+      ELSE.
+        screen-active    = '1'.
+        screen-invisible = '0'.
+      ENDIF.
+      MODIFY SCREEN.
+    ENDIF.
+
+
+    IF screen-name = 'VG_ITEM_0004_6' OR screen-name = 'VG_QTDE_0004_6'.
+      IF vg_item_0004_6 IS INITIAL OR vg_item_0004_6 = 0 OR vg_item_0004_6 = '000000'.
+        screen-active    = '0'.
+        screen-invisible = '1'.
+      ELSE.
+        screen-active    = '1'.
+        screen-invisible = '0'.
+      ENDIF.
+      MODIFY SCREEN.
+    ENDIF.
+  ENDLOOP.
+
+
+ENDMODULE.
