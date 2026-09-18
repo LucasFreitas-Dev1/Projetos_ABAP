@@ -1,0 +1,405 @@
+
+FORM ZEXEC_CONF .
+
+  v_cont = 1.
+
+  IF CP_REMESSA IS INITIAL.
+    C_TEXTO = 'Campo obrigatório.'.
+    Return.
+  ENDIF.
+
+  CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+    EXPORTING
+      input  = CP_REMESSA
+    IMPORTING
+      output = CP_REMESSA.
+
+  SELECT *
+     FROM lips
+     INTO TABLE it_lips
+     WHERE VBELN = CP_REMESSA.
+
+  CLEAR it_aux_item.
+
+  LOOP AT it_lips INTO wa_lips.
+
+    READ TABLE it_aux_item INTO wa_aux_item WITH KEY matnr = wa_lips-matnr.
+
+    IF sy-subrc = 0.
+
+*      wa_aux_item-lfimg = wa_aux-lfimg + wa_conferidos-lfimg.
+      MODIFY it_aux_item FROM wa_aux_item INDEX sy-tabix.
+    ELSE.
+
+      APPEND wa_lips TO it_aux_item.
+    ENDIF.
+
+  ENDLOOP.
+
+  it_lips = it_aux_item.
+
+    READ TABLE it_lips INTO wa_lips INDEX v_cont.
+
+  C_REC_REMESSA = CP_REMESSA.
+  CP_REMESSA3 = CP_REMESSA.
+  CP_MAT = wa_lips-matnr.
+  CP_DESCRI = wa_lips-arktx.
+
+
+  IF SY-SUBRC <> 0.
+    c_texto = 'Recebimento não encontrado.'.
+    RETURN.
+  ENDIF.
+
+
+  "Trazer apenas os que nao foram conferidos ainda
+  SELECT VBELN POSNR CONT LFIMG VOLUM
+    FROM zwm_volum
+    INTO TABLE it_volum
+    WHERE vbeln = cp_remessa.
+
+  "Se já tiver algo conferido, tira da it_lips
+  IF it_volum[] IS NOT INITIAL.
+    LOOP AT it_volum INTO wa_volum.
+      DELETE it_lips WHERE posnr = wa_volum-posnr.
+    ENDLOOP.
+  ENDIF.
+
+  "Tenta ler o primeiro item que sobrou
+  READ TABLE it_lips INTO wa_lips INDEX v_cont.
+
+  IF sy-subrc = 0.
+    C_REC_REMESSA = CP_REMESSA.
+    CP_REMESSA3   = CP_REMESSA.
+    CP_MAT        = wa_lips-matnr.
+
+      SHIFT CP_MAT LEFT DELETING LEADING '0'.
+
+    CP_ITENS = |Item: { v_cont } de { lines( it_lips ) }|.
+
+    CLEAR c_texto.
+    CALL SCREEN 0002.
+  ELSE.
+    c_texto = 'Recebimento já está conferido!'.
+  ENDIF.
+
+ENDFORM.
+
+FORM ZEXEC_BTN_PROX .
+
+  " ve quantos itens tem
+  v_total = lines( it_lips ).
+
+  IF v_cont < v_total.
+    v_cont = v_cont + 1.
+
+    READ TABLE it_lips INTO wa_lips INDEX v_cont.
+    cp_mat = wa_lips-matnr.
+    CP_ITENS = |Item: { v_cont } de { v_total }|.
+
+    clear cp_qtd.
+  ELSE.
+    cp_item =  'Último item atingido'.
+  ENDIF.
+
+ENDFORM.
+
+FORM ZF_CLEAR_CAMPOS_TELA_0003 .
+
+  CLEAR:  vg_matnr_0004_1,
+          vg_matnr_0004_2,
+          vg_matnr_0004_3 ,
+          vg_matnr_0004_4,
+          vg_matnr_0004_5,
+          vg_matnr_0004_6,
+          vg_ARKTX_0004_1,
+          vg_ARKTX_0004_2,
+          vg_ARKTX_0004_3,
+          vg_ARKTX_0004_4,
+          vg_ARKTX_0004_5,
+          vg_ARKTX_0004_6,
+          vg_item_0004_1,
+          vg_item_0004_2,
+          vg_item_0004_3,
+          vg_item_0004_4,
+          vg_item_0004_5,
+          vg_item_0004_6,
+          vg_qtde_0004_1,
+          vg_qtde_0004_2,
+          vg_qtde_0004_3,
+          vg_qtde_0004_4,
+          vg_qtde_0004_5,
+          vg_qtde_0004_6.
+
+ENDFORM.
+
+FORM Z_COMPARACAO_CONF .
+
+
+  SELECT *
+  FROM LIPS
+  INTO TABLE it_lips
+  WHERE VBELN = CP_REMESSA.
+
+      " tabela nterna auxiliar para tirar material duplicado e somar valor
+  DATA: it_aux_lips LIKE it_lips,
+        wa_aux_lips LIKE LINE OF it_lips.
+
+  CLEAR it_aux_lips.
+
+  LOOP AT it_lips INTO wa_lips.
+
+    READ TABLE it_aux_lips INTO wa_aux_lips WITH KEY matnr = wa_lips-matnr.
+
+    IF sy-subrc = 0.
+
+      wa_aux_lips-lfimg = wa_aux_lips-lfimg + wa_lips-lfimg.
+      MODIFY it_aux_lips FROM wa_aux_lips INDEX sy-tabix.
+    ELSE.
+
+      APPEND wa_lips TO it_aux_lips.
+    ENDIF.
+
+  ENDLOOP.
+
+  it_lips = it_aux_lips.
+
+  SELECT VBELN POSNR CONT LFIMG VOLUM
+    FROM zwm_volum
+    INTO TABLE it_volum
+    WHERE vbeln = cp_remessa.
+
+
+*  CLEAR lv_erro.
+  REFRESH lv_divergencias.
+
+*  "comparação dos itens
+  LOOP AT it_lips INTO wa_lips.
+
+    CLEAR v_total_volum.
+
+    "alimentando variavel de total
+    LOOP AT it_volum INTO wa_volum WHERE posnr = wa_lips-posnr.
+      v_total_volum = v_total_volum + ( wa_volum-volum * wa_volum-lfimg ).
+    ENDLOOP.
+
+   "Se não encontrou contagem ou a quantidade está errada
+    IF sy-subrc <> 0 OR v_total_volum <> wa_lips-lfimg.
+      APPEND wa_lips TO lv_divergencias. " Guarda o item com erro aqui
+    ENDIF.
+  ENDLOOP.
+
+
+  IF lv_divergencias[] IS INITIAL.
+
+    CALL SCREEN 0004.
+
+  ELSE.
+
+    LOOP AT lv_divergencias INTO DATA(wa_divergencia).
+      DELETE FROM zwm_volum
+       WHERE vbeln = cp_remessa
+         AND posnr = wa_divergencia-posnr.
+    ENDLOOP.
+
+
+    COMMIT WORK.
+
+    CALL SCREEN 0005.
+
+
+ENDIF.
+ENDFORM.
+
+FORM Z_CONFERIR .
+
+  v_campos_ativos = ' '.
+
+  CLEAR v_total_volum.
+
+  SELECT VBELN POSNR CONT LFIMG VOLUM
+    FROM zwm_volum
+    INTO TABLE it_volum
+    WHERE vbeln = cp_remessa
+    AND posnr = wa_lips-posnr.
+
+*  "alimentando variavel de total
+  LOOP AT it_volum INTO wa_volum WHERE posnr = wa_lips-posnr.
+    v_total_volum = v_total_volum + ( wa_volum-volum * wa_volum-lfimg ).
+  ENDLOOP.
+
+*  "Alimentar tabela Z
+  ZWM_VERIFIC-POSNR = wa_lips-posnr.
+  ZWM_VERIFIC-VBELN = C_REC_REMESSA.
+  ZWM_VERIFIC-MATNR = CP_MAT.
+  ZWM_VERIFIC-LFIMG = v_total_volum.
+  ZWM_VERIFIC-ARKTX = wa_lips-arktx.
+
+  MODIFY ZWM_VERIFIC.
+  COMMIT WORK.
+
+  SELECT vbeln posnr matnr arktx lfimg
+  FROM zwm_verific
+  INTO TABLE ty_conferidos
+  WHERE vbeln = cp_remessa.
+
+ " tabela nterna auxiliar para tirar material duplicado e somar valor
+  DATA: it_aux LIKE ty_conferidos,
+        wa_aux LIKE LINE OF ty_conferidos.
+
+  CLEAR it_aux.
+
+  LOOP AT ty_conferidos INTO wa_conferidos.
+
+    READ TABLE it_aux INTO wa_aux WITH KEY matnr = wa_conferidos-matnr.
+
+    IF sy-subrc = 0.
+
+      wa_aux-lfimg = wa_aux-lfimg + wa_conferidos-lfimg.
+      MODIFY it_aux FROM wa_aux INDEX sy-tabix.
+    ELSE.
+
+      APPEND wa_conferidos TO it_aux.
+    ENDIF.
+
+  ENDLOOP.
+
+  ty_conferidos = it_aux.
+
+  DATA lt_salvar TYPE TABLE OF zwm_verific.
+
+MOVE-CORRESPONDING ty_conferidos TO lt_salvar.
+
+*Deleta o antigo e grava o novo agrupado
+DELETE FROM zwm_verific WHERE vbeln = cp_remessa.
+INSERT zwm_verific FROM TABLE lt_salvar.
+
+COMMIT WORK.
+
+  "contador
+  v_cont = v_cont + 1.
+
+  READ TABLE it_lips INTO wa_lips INDEX v_cont.
+
+  IF sy-subrc = 0.
+    CLEAR: cp_qtd, cp_item.
+
+    " Faz a tela 'mudar' para o usuário
+
+    CP_DESCRI = wa_lips-ARKTX.
+    CP_MAT  = wa_lips-matnr.
+    CP_ITEM = 'Item conferido! Próximo item carregado.'.
+
+    SHIFT CP_MAT LEFT DELETING LEADING '0'.
+
+    CP_ITENS = |Item: { v_cont } de { lines( it_lips ) }|.
+
+  ELSE.
+    PERFORM Z_comparacao_conf.
+  ENDIF.
+
+
+ENDFORM.
+
+FORM ZBTN_ANTERIOR .
+
+  "volta a pagina se nao estiver na primeira
+  IF vg_index_0004 > 1.
+    vg_index_0004 = vg_index_0004 - 1.
+  ELSE.
+    cp_item_2 = 'Primeira página atingida.'.
+  ENDIF.
+
+ENDFORM.
+
+FORM ZBTN_PROXIMO .
+
+  "le quantidade de registros da tabela iterna
+  DATA(lv_total_itens) = lines( ty_conferidos ).
+
+  "se tiver mais de 6 itens, vai continuar para a proxima pagina
+  IF ( vg_index_0004 * 6 ) < lv_total_itens.
+    vg_index_0004 = vg_index_0004 + 1.
+
+  ELSE.
+    cp_item_2 = 'Última página atingida.'.
+  ENDIF.
+
+ENDFORM.
+
+FORM ZBTN_RECONTAGEM .
+
+LOOP AT lv_divergencias INTO wa_divergencias.
+  "deleta o item que estiver divergente
+  DELETE FROM zwm_volum
+    WHERE vbeln = cp_remessa
+      AND posnr = wa_divergencias-posnr.
+
+  IF sy-subrc <> 0.
+    COMMIT WORK.
+
+    c_texto = 'Faça a recontagem!'.
+    SET SCREEN 0001.
+    LEAVE SCREEN.
+  ELSE.
+    TXT_RECONTAGEM = 'Erro ao liberar item.'.
+  ENDIF.
+  ENDLOOP.
+
+ENDFORM.
+
+FORM ZBTN_OK_VOLUM .
+
+  "se não tiver liberado os campos antes
+  IF v_campos_ativos = ' '.
+    CP_ITEM = 'É preciso liberar o campo antes.'.
+    RETURN.
+  ENDIF.
+
+  IF CP_VOL IS INITIAL.
+    CP_ITEM = 'É preciso colocar volume!'.
+    RETURN.
+  ENDIF.
+
+  "Contador para o VBELN e o POSNR
+  SELECT SINGLE MAX( CONT )
+  FROM zwm_volum
+  INTO v_cont_volum
+  WHERE vbeln = cp_remessa
+  AND posnr = wa_Lips-posnr.
+
+  IF SY-SUBRC = 0.
+    v_cont_volum = v_cont_volum + 1.
+  ELSE.
+    v_cont_volum = 1.
+  ENDIF.
+
+MOVE-CORRESPONDING wa_lips TO zwm_volum.
+
+  " 3. Preenche na mão o resto que sobrou das variáveis da tela
+  zwm_volum-lfimg = cp_qtd.
+  zwm_volum-volum = cp_vol.
+  zwm_volum-cont  = v_cont_volum.
+
+  " 4. Grava no banco de dados
+  MODIFY zwm_volum.
+  COMMIT WORK.
+*
+*  ZWM_VOLUM-VBELN = CP_REMESSA.
+*  ZWM_VOLUM-POSNR = wa_lips-posnr.
+*  ZWM_VOLUM-LFIMG = CP_QTD.
+*  ZWM_VOLUM-VOLUM = CP_VOL.
+*  ZWM_VOLUM-CONT  = V_CONT_VOLUM.
+
+*  MODIFY ZWM_VOLUM.
+*  COMMIT WORK.
+
+
+  IF SY-SUBRC = 0.
+    CP_ITEM = 'Volume salvo com sucesso.'.
+    v_campos_ativos = ' '.
+  ELSE.
+    CP_ITEM = 'Erro ao adicionar volume.'.
+
+  ENDIF.
+ENDFORM.
